@@ -1,9 +1,6 @@
 import sublime, sublime_plugin
-import subprocess, re, os, os.path
-
-class KillMasterCommand(sublime_plugin.ApplicationCommand):
-    def run(self):
-        sublime.status_message("Hello, World!")
+import subprocess, threading
+import re, os, os.path
 
 def make_build_system_name(system, variant):
     if system.endswith('.'):
@@ -34,15 +31,42 @@ class Panel:
     def append(self, text):
         self.run_command("minion_panel_append", { "text" : text })
 
-    @classmethod
-    def find_panel(cls, window, name):
-        panel = Panel(window.find_output_panel(name))
-        window.run_command("show_panel", { "panel" : "output.{}".format(name) })
-        return panel
+    @staticmethod
+    def find_panel(window, name):
+        panel = window.find_output_panel(name)
 
-    @classmethod
-    def find_exec_panel(cls, window):
+        if panel == None:
+            return None
+        else:
+            panel = Panel(panel)
+            window.run_command("show_panel", { "panel" : "output.{}".format(name) })
+            return panel
+
+    @staticmethod
+    def request_panel(window, name):
+        panel = Panel.find_panel(window, name)
+
+        if panel == None:
+            panel = window.create_output_panel(name)
+            return Panel(panel)
+        else:
+            return panel
+
+    @staticmethod
+    def find_exec_panel(window):
         return Panel.find_panel(window, "exec")
+
+    @staticmethod
+    def request_exec_panel(window):
+        panel = Panel.find_panel(window, "exec")
+
+        if panel == None:
+            panel = window.create_output_panel("exec")
+            panel.settings().set('color_scheme', "Packages/Color Scheme - Default/IDLE.tmTheme")
+            panel = Panel(panel)
+
+        window.run_command("show_panel", { "panel" : "output.exec" })
+        return panel
 
 class MinionClearViewCommand(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -121,23 +145,20 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
 
     def open_output_panel(self):
         panel = Panel(self.window.create_output_panel("exec"))
-        panel.settings().set('color_scheme', "Packages/Color Scheme - Default/IDLE.tmTheme")
+        # panel.settings().set('color_scheme', "Packages/Color Scheme - Default/IDLE.tmTheme")
         self.window.run_command("show_panel", { "panel" : "output.exec" })
         panel.clear()
         return panel
 
     def run_build(self, build_system):
-        print("MinionBuildCommand: run_build") 
-
         self.window.run_command("save_all")
-  
+
         if self.build_process != None:
             self.build_process.terminate()
             self.build_process = None
+            Panel.find_exec_panel(self.window).clear()
 
         def callback():
-            print("MinionBuildCommand: run_build.callback")
-
             print(build_system["cmd"])
 
             self.build_process = subprocess.Popen(
@@ -148,24 +169,24 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
 
             self.build_result_position = 0
 
-            panel = self.open_output_panel()
             self.window.run_command("minion_next_result", { "action" : "init", "build_system" : build_system })
 
             def callback():
                 self.window.run_command("minion_focus_sublime")
 
-            sublime.set_timeout(callback, 150)
+            sublime.set_timeout(callback, 500)
+
+            panel = self.open_output_panel()
 
             for line in self.build_process.stdout: 
                 panel.append(line.decode("utf-8")) 
 
-            print("MinionBuildCommand: run_build.callback ended...")
-
         sublime.set_timeout_async(callback, 0)
-        print("MinionBuildCommand: run_build ended")        
 
     def run(self):
         window = self.window
+
+        Panel.request_exec_panel(window).clear()
 
         build_systems = self.build_systems()
 
