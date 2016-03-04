@@ -1,6 +1,8 @@
 import sublime, sublime_plugin
 import subprocess, threading
-import re, os, os.path
+import re, os, os.path, time
+
+print("Hello world!")
 
 def make_build_system_name(system, variant):
     if system.endswith('.'):
@@ -74,7 +76,11 @@ class MinionClearViewCommand(sublime_plugin.TextCommand):
 
 class MinionPanelAppendCommand(sublime_plugin.TextCommand):
     def run(self, edit, text):
+        scroll = self.view.visible_region().end() == self.view.size()
         self.view.insert(edit, self.view.size(), text)
+
+        if scroll:
+            self.view.show(self.view.size())
 
 class MinionNextResultCommand(sublime_plugin.WindowCommand):
     def __init__(self, window):
@@ -143,13 +149,6 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
 
         return build_systems
 
-    def open_output_panel(self):
-        panel = Panel(self.window.create_output_panel("exec"))
-        # panel.settings().set('color_scheme', "Packages/Color Scheme - Default/IDLE.tmTheme")
-        self.window.run_command("show_panel", { "panel" : "output.exec" })
-        panel.clear()
-        return panel
-
     def run_build(self, build_system):
         self.window.run_command("save_all")
 
@@ -161,11 +160,11 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
         def callback():
             print(build_system["cmd"])
 
-            self.build_process = subprocess.Popen(
-                build_system["cmd"], 
-                stdout = subprocess.PIPE, 
-                stderr = subprocess.STDOUT,
-                cwd = build_system["working_dir"])
+            self.window.run_command(
+                "minion_task_runner",
+                {   "method" : "run_task", 
+                    "command" : build_system["cmd"], 
+                    "working_dir" : build_system["working_dir"] })
 
             self.build_result_position = 0
 
@@ -175,11 +174,6 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
                 self.window.run_command("minion_focus_sublime")
 
             sublime.set_timeout(callback, 500)
-
-            panel = self.open_output_panel()
-
-            for line in self.build_process.stdout: 
-                panel.append(line.decode("utf-8")) 
 
         sublime.set_timeout_async(callback, 0)
 
@@ -204,15 +198,81 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
 class MinionFocusSublimeCommand(sublime_plugin.WindowCommand):
     def window_name(self):
         active = self.window.active_view()
-        home = os.path.expanduser("~")
-        path = active.file_name().replace(home, "~")
-
         project = os.path.basename(self.window.project_file_name())
         project = project.replace(".sublime-project", "")
 
-        return "{} ({}) - Sublime Text".format(path, project)
+        if active and active.file_name():
+            home = os.path.expanduser("~")
+            path = active.file_name().replace(home, "~")
+
+            return "{} ({}) - Sublime Text".format(path, project)
+        else:
+            return "untitled ({}) - Sublime Text".format(project)
 
     def run(self):
         subprocess.check_call(["wmctrl", "-a", self.window_name()])
 
+
+class MinionTaskRunnerCommand(sublime_plugin.WindowCommand):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.workers = []
+        self.workers_mutex = threading.Lock()
+
+    def run(self, method, **kwargs):
+        getattr(self, method)(**kwargs)
+
+    def run_task(self, command, working_dir = None):
+        if working_dir == None:
+            working_dir = os.path.expanduser("~")
+
+        def target():
+            start = time.time()
+
+            process = subprocess.Popen(
+                command, 
+                stdout = subprocess.PIPE, 
+                stderr = subprocess.STDOUT,
+                cwd = working_dir)
+
+            with self.workers_mutex:
+                self.workers.append((thread, process))
+
+            panel = Panel.request_exec_panel(self.window)
+
+            try:
+                for line in process.stdout: 
+                    panel.append(line.decode("utf-8")) 
+            except:
+                print("buba")
+                raise
+                
+            process.wait()
+
+            returncode = process.returncode
+            elapsed = time.time() - start
+
+            if returncode != 0:
+                panel.append(
+                    "[Finished in {:.2f}s with exit code {}]\n".format(elapsed, returncode))
+                panel.append("[cmd: {}]\n".format(command))
+                panel.append("[dir: {}]\n".format(working_dir))
+                # panel.append("[path: {}]".format())
+            else:
+                panel.append("[Finished in {:.2f}s]\n".format(elapsed))
+
+        thread = threading.Thread( 
+            target = target,
+            daemon = True)
+
+        thread.start()
+
+    def cancel_all(self):
+        with self.workers_mutex:
+            for thread, process in self.workers:
+                process.terminate()
+
+            self.workers = []
+
+        sublime.status_message("Cancelled all tasks...")
 
