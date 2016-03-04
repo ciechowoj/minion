@@ -64,7 +64,7 @@ class Panel:
 
         if panel == None:
             panel = window.create_output_panel("exec")
-            panel.settings().set('color_scheme', "Packages/Color Scheme - Default/IDLE.tmTheme")
+            panel.settings().set('color_scheme', "Packages/User/IDLEIDLE.tmTheme")
             panel = Panel(panel)
 
         window.run_command("show_panel", { "panel" : "output.exec" })
@@ -105,17 +105,21 @@ class MinionNextResultCommand(sublime_plugin.WindowCommand):
                 file = match.group(1)
                 line = match.group(2)
                 column = match.group(3)
-    
+
                 working_dir = self.build_system["working_dir"]
                 basename = "{}:{}:{}".format(file, line, column)
                 path = os.path.join(working_dir, basename)
     
-                self.window.open_file(path, sublime.ENCODED_POSITION)
+                view = self.window.open_file(path, sublime.ENCODED_POSITION)
+                
+                panel.add_regions("error", [region], "error")
 
                 sublime.status_message(message)
 
             except (AttributeError, TypeError):
                 sublime.status_message("No more errors...")
+
+
 
 class MinionBuildCommand(sublime_plugin.WindowCommand):
     def __init__(self, *args):
@@ -270,7 +274,10 @@ class MinionTaskRunnerCommand(sublime_plugin.WindowCommand):
     def cancel_all(self):
         with self.workers_mutex:
             for thread, process in self.workers:
-                process.terminate()
+                try:
+                    process.terminate()
+                except ProcessLookupError:
+                    pass
 
             self.workers = []
 
