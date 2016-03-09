@@ -1,13 +1,7 @@
 import sublime, sublime_plugin
 import subprocess, threading
 import re, os, os.path, time
-
-def make_process(command, working_dir):
-    return subprocess.Popen(
-        command,
-        stdout = subprocess.PIPE,
-        stderr = subprocess.STDOUT,
-        cwd = working_dir)
+import queue
 
 def make_build_system_name(system, variant):
     if system.endswith('.'):
@@ -326,3 +320,147 @@ class MinionFixLineEndings(sublime_plugin.TextCommand):
             self.view.replace(edit, result, "\n")
             position = result.end()
             result = self.view.find("(\\ +)\\n", position)
+
+class Task:
+    class Sentinel:
+        pass
+
+    def __init__(self, command, working_dir):
+        self.process = subprocess.Popen(
+            command,
+            stdout = subprocess.PIPE,
+            stderr = subprocess.STDOUT,
+            cwd = working_dir)
+
+        self.queue = queue.Queue()
+
+        def target():
+            for item in self.process.stdout:
+                self.queue.put(item)
+
+            self.process.pool()
+            self.queue.put(Task.Sentinel())
+
+        self.thread = threading.Thread(target = target, daemon = True)
+        self.thread.start()
+
+    def __iter__(self):
+        class Generator:
+            def __init__(self, queue):
+                self.queue = queue
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                try:
+                    while True:
+                        item = self.queue.get(True, 0.5)
+                        if isinstance(item, Task.Sentinel):
+                            raise StopIteration
+                        else:
+                            return item
+                except queue.Empty:
+                    return None
+
+        return Generator(self.queue)
+
+    def terminate(self):
+        self.process.terminate()
+
+    def return_code(self):
+        return self.process.returncode
+
+class MinionBuild2Command(sublime_plugin.WindowCommand):
+    thread = None
+    cancel = None
+    cancel_mutex = threading.Lock()
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def __del__(self):
+        self.cancel_build()
+
+    def run(self, method, config = None):
+        if method == "run":
+            config = {}
+            config['command'] = ['dub', 'test']
+            config['working_dir'] = '/home/wojciech/dstep'
+            self.run_build(config)
+        elif method == "cancel":
+            self.cancel_build()
+            
+    def filter(self, panel, lines, config):
+        panel.append('> {}'.format(lines[-1]))
+
+    def on_cancelled(self, panel, elapsed_time, config):
+        panel.append('[Cancelled build.]\n')
+
+    def on_finished(self, panel, return_code, elapsed_time, config):
+        panel.append_finish_message(
+            config['command'], 
+            config['working_dir'], 
+            return_code, 
+            elapsed_time)
+
+    def run_build(self, config):
+        klass = MinionBuild2Command
+        self.cancel_build()
+
+        start = time.time()
+        process = Task(config['command'], config['working_dir'])
+        lines = []
+        return_code = None
+
+        panel = Panel.request_exec_panel(self.window)
+        panel.clear()
+        panel.append("[Building...]\n")
+
+        def worker_main():
+            cancelled = False
+
+            for line in process:
+                with klass.cancel_mutex:
+                    if klass.cancel:
+                        process.terminate()
+                        cancelled = True
+                        break
+
+                if line != None:
+                    lines.append(line.decode('utf-8'))
+                    self.filter(panel, lines, config)
+
+            elapsed_time = time.time() - start
+
+            if cancelled:
+                self.on_cancelled(panel, elapsed_time, config)
+            else:
+                self.on_finished(panel, process.return_code(), elapsed_time, config)
+
+        klass.thread = threading.Thread(target = worker_main)
+        klass.thread.start()
+
+    @classmethod
+    def cancel_build(klass):
+        if klass.thread:
+            with klass.cancel_mutex:
+                klass.cancel = True
+            klass.thread.join(8)
+            klass.thread = None
+            klass.cancel = False
+
+def plugin_unloaded():
+    MinionBuild2Command.cancel_build()
+
+
+
+
+
+ 
+
+
+
+
+
+
