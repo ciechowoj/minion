@@ -31,7 +31,7 @@ class Window:
 
         for build_system in build_systems:
             if "working_dir" in build_system:
-                return sublime.expand_variables(build_system["working_dir"], self.extract_variables())
+               return sublime.expand_variables(build_system["working_dir"], self.extract_variables())
 
         return None
 
@@ -134,7 +134,7 @@ class MinionNextResultCommand(sublime_plugin.WindowCommand):
                 basename = "{}:{}:{}".format(file, line, column)
                 path = os.path.join(working_dir, basename)
 
-                panel.add_regions("error", [region], "error")
+                panel.add_regions("error", [region], "error", flags = sublime.DRAW_STIPPLED_UNDERLINE | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE)
                 panel.show_at_center(region)
 
                 view = self.window.open_file(path, sublime.ENCODED_POSITION)
@@ -179,24 +179,39 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
             "minion_generic_build",
             { "config" : config })
 
+    def is_project_opened(self):
+        return self.window.project_data() != None
 
-    def run(self):
-        window = self.window
+    def run_file_build(self):
+        view = self.window.active_view()
+        if view.file_name().endswith(".cpp"):
+            print("Not implemented")
 
-        Panel.request_exec_panel(window).clear()
+    def run(self): 
+        if self.is_project_opened():
+            window = self.window
 
-        build_systems = self.build_systems()
+            Panel.request_exec_panel(window).clear()
 
-        if self.build_system in build_systems:
-            self.run_build(build_systems[self.build_system])
-        else:
-            build_system_names = sorted(list(build_systems.keys()))
+            build_systems = self.build_systems()
 
-            def on_done(index):
-                self.build_system = build_system_names[index]
+            if self.build_system in build_systems:
                 self.run_build(build_systems[self.build_system])
+            else:
+                build_system_names = sorted(list(build_systems.keys()))
 
-            window.show_quick_panel(build_system_names, on_done)
+                def on_done(index):
+                    self.build_system = build_system_names[index]
+                    self.run_build(build_systems[self.build_system])
+
+                window.show_quick_panel(build_system_names, on_done)
+
+        else:
+            self.run_file_build()
+
+class MinionCancellBuildCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        self.window.run_command("minion_generic_build");
 
 class MinionFocusSublimeCommand(sublime_plugin.WindowCommand):
     def window_name(self):
@@ -219,76 +234,31 @@ class MinionFocusSublimeCommand(sublime_plugin.WindowCommand):
             args = ("minion_focus_sublime", { "depth" : depth - 1 })
             sublime.set_timeout_async(lambda: self.window.run_command(*args), 333)
 
-class MinionTaskRunnerCommand(sublime_plugin.WindowCommand):
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.workers = []
-        self.workers_mutex = threading.Lock()
+def get_working_dir():
+    window = sublime.active_window()
 
-    def run(self, method, **kwargs):
-        getattr(self, method)(**kwargs)
-
-    def run_build(self, build_system):
-        pass
-
-
-    def run_task(self, command, working_dir = None):
-        if working_dir == None:
-            working_dir = os.path.expanduser("~")
-
-        def target():
-            start = time.time()
-
-            process = make_process(command, working_dir)
-
-            with self.workers_mutex:
-                self.workers.append((thread, process))
-
-            panel = Panel.request_exec_panel(self.window)
-
-            for line in process.stdout:
-                panel.append(line.decode("utf-8"))
-
-            process.wait()
-
-            returncode = process.returncode
-            elapsed = time.time() - start
-
-            panel.append_finish_message(command, working_dir, returncode, elapsed)
-
-        thread = threading.Thread(
-            target = target,
-            daemon = True)
-
-        thread.start()
-
-    def cancel_all(self):
-        with self.workers_mutex:
-            for thread, process in self.workers:
-                try:
-                    process.terminate()
-                except ProcessLookupError:
-                    pass
-
-            self.workers = []
-
-        sublime.status_message("Cancelled all tasks...")
+    if window.project_data():
+        build_systems = window.project_data()["build_systems"]
+        for build_system in build_systems:
+            if "working_dir" in build_system:
+               return sublime.expand_variables(build_system["working_dir"], window.extract_variables())        
+    
+    view = window.active_view()
+    return os.path.dirname(view.file_name())
 
 class MinionMakeCommand(sublime_plugin.WindowCommand):
     def run(self):
-        window = Window(self.window)
-
         commands = [
+            ("Make - Make", ["make"]),
             ("Make - Clean", ["make", "clean"]),
             ("Make - Distclean", ["make", "distclean"])]
 
         def on_done(index):
-            params = {
-                "method" : "run_task",
+            config = {
                 "command" : commands[index][1],
-                "working_dir" : window.get_working_dir() }
+                "working_dir" : get_working_dir() }
 
-            self.window.run_command("minion_task_runner", params)
+            self.window.run_command("minion_generic_build", { "config" : config })
 
         self.window.show_quick_panel([x[0] for x in commands], on_done)
 
@@ -374,7 +344,6 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
                     start = time.time()
                     process = Task(config['command'], config['working_dir'])
                     lines = []
-                    return_code = None
 
                     panel = Panel.request_exec_panel(self.window)
                     panel.clear()
@@ -435,3 +404,14 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
 
 def plugin_unloaded():
     MinionGenericBuildCommand.cancel_build()
+
+
+
+
+
+
+
+
+
+
+
