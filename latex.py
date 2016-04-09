@@ -1,6 +1,6 @@
 import sublime_plugin
-from User.build import *
 
+from User.build import *
 
 class MinionBuildLatexCommand(sublime_plugin.WindowCommand):
     ignore = [
@@ -21,7 +21,15 @@ class MinionBuildLatexCommand(sublime_plugin.WindowCommand):
         "ABD: EveryShipout initializing macros",
         r"\[Loading MPS to PDF converter.*\]",
         r"\(/usr/share/texmf/tex/generic/pgf/frontendlayer/tikz/libraries/t",
-        r"hs.code.tex\)\)\) \(.*\)"
+        r"hs.code.tex\)\)\) \(.*\)",
+        r"Package hyperref (?:Message:|Warning:)",
+        r"^\)$",
+        r"\[[0-9]*\]",
+        r"^\(Font\)",
+        r"^\(hyperref\)",
+        r"^LaTeX Font Warning:",
+        r"^For additional information on amsmath, use the `\?' option.",
+        r"^   Inputenc package detected. Catcodes not changed.",
     ]
 
     def latex_data(self):
@@ -39,31 +47,72 @@ class MinionBuildLatexCommand(sublime_plugin.WindowCommand):
 
         return expand_variables_ex(latex_data)
 
-    def filter(self, panel, lines, config):
+    def filter_single_line(self, panel, line, config, context):
+        ignore = False
+
+        for item in MinionBuildLatexCommand.ignore:
+            if re.match(item, line) != None:
+                ignore = True
+                break
+
+        if line.startswith("(./{}".format(config["main"])):
+            ignore = True
+        elif line == "\n":
+            ignore = True
+
+        if ignore:
+            context["ignored"] += 1
+        else:
+            panel.append('{}'.format(line))
+
+    def filter(self, panel, line, config, context):
         verbose = "verbose" in config and config["verbose"]
 
         if not verbose:
-            ignore = False
+            if "lines" not in context:
+                context["lines"] = []
 
-            for item in MinionBuildLatexCommand.ignore:
-                if re.match(item, lines[-1]) != None:
-                    ignore = True
-                    break
+            if "ignored" not in context:
+                context["ignored"] = 0
 
-            if ignore:
-                pass
-            elif lines[-1].startswith("(./{}".format(config["main"])):
-                pass
-            else:
-                panel.append('{}'.format(lines[-1]))
+            lines = context["lines"]
+            lines.append(line)
 
-    def on_finished(self, panel, return_code, elapsed_time, config):
-        pass
+            if len(lines) == 5:
+                if lines[-5].startswith("*" * 49) and lines[-1].startswith("*" * 49) and lines[-4].startswith("* LaTeX warning:"):
+                    lines.clear()
+                    context["ignored"] += 1
+                else:
+                    self.filter_single_line(panel, lines[-5], config, context)
+                    lines.pop(0)
+        else:
+            panel.append('{}'.format(line))
 
-    def run(self):
+    def on_finished(self, panel, return_code, elapsed_time, config, context):
+        if "lines" in context:
+            for line in context["lines"]:
+                self.filter_single_line(panel, line, config, context)
+
+        if "ignored" in context:
+            panel.append("[Ignored {} warnings]\n".format(context["ignored"]))
+
+        panel.append("[Finished]\n")
+
+    def run(self, draft = False):
         latex_data = self.latex_data()
 
-        latex_data["command"] = ["pdflatex", latex_data["main"]]
+        if draft:
+            latex_data["command"] = ["pdflatex", "--draftmode", latex_data["main"]]
+        else:
+            latex_data["command"] = ["pdflatex", latex_data["main"]]
 
-        MinionGenericBuildCommand.run_build(latex_data, self.filter)
+        MinionGenericBuildCommand.run_build(latex_data, self.filter, self.on_finished)
 
+class MinionLatexListener(sublime_plugin.EventListener):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def on_post_save(self, view):
+        if view.file_name().endswith(".tex"):
+            window = view.window()
+            window.run_command("minion_build_latex", { "draft" : False })

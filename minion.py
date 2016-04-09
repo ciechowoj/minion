@@ -2,6 +2,8 @@ import sublime, sublime_plugin
 import subprocess
 import re, os, os.path
 from User.build import *
+from User.output import *
+import traceback
 
 def make_build_system_name(system, variant):
     if system.endswith('.'):
@@ -49,7 +51,7 @@ class MinionNextResultCommand(sublime_plugin.WindowCommand):
             self.build_system = kwargs["build_system"]
         else:
             try:
-                panel = Panel.find_exec_panel(self.window)
+                panel = OutputView.request()
                 file_regex = self.build_system["file_regex"]
                 region = panel.find(file_regex, self.position)
 
@@ -68,11 +70,12 @@ class MinionNextResultCommand(sublime_plugin.WindowCommand):
                 panel.add_regions("error", [region], "error", flags = sublime.DRAW_STIPPLED_UNDERLINE | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE)
                 panel.show_at_center(region)
 
-                view = self.window.open_file(path, sublime.ENCODED_POSITION)
+                self.window.open_file(path, sublime.ENCODED_POSITION)
 
                 sublime.status_message(message)
 
             except (AttributeError, TypeError):
+                traceback.print_exc()
                 sublime.status_message("No more errors...")
 
 class MinionBuildCommand(sublime_plugin.WindowCommand):
@@ -119,7 +122,7 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
             print("Not implemented")
         else:
             print("Not implemented")
-            
+
     def is_latex_project(self):
         return "latex" in self.window.project_data()
 
@@ -133,7 +136,7 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
         elif self.is_project_opened():
             window = self.window
 
-            Panel.request_exec_panel(window).clear()
+            OutputView.request().clear()
 
             build_systems = self.build_systems()
 
@@ -183,7 +186,7 @@ def get_working_dir():
         build_systems = window.project_data()["build_systems"]
         for build_system in build_systems:
             if "working_dir" in build_system:
-               return sublime.expand_variables(build_system["working_dir"], window.extract_variables())        
+               return sublime.expand_variables(build_system["working_dir"], window.extract_variables())
     
     view = window.active_view()
     return os.path.dirname(view.file_name())
@@ -213,15 +216,3 @@ class MinionFixLineEndings(sublime_plugin.TextCommand):
             self.view.replace(edit, result, "\n")
             position = result.end()
             result = self.view.find("(\\ +)\\n", position)
-
-
-
-
-
-
-
-
-
-
-
-

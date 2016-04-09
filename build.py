@@ -4,6 +4,7 @@ import traceback
 import re, time, copy
 import os
 import queue
+from User.output import *
 
 def expand_variables_ex(value, variables = None):
     variables = variables if variables else sublime.active_window().extract_variables()
@@ -16,68 +17,6 @@ def expand_variables_ex(value, variables = None):
         return { k : expand_variables_ex(v, variables) for k, v in value.items() }
     else:
         return value
-
-class Panel:
-    def __init__(self, view):
-        self.view = view
-
-    def __getattr__(self, name):
-        return getattr(self.view, name)
-
-    def clear(self):
-        self.run_command("minion_clear_view")
-
-    def append(self, text):
-        self.run_command("minion_panel_append", { "text" : text })
-
-    def append_finish_message(self, command, working_dir, return_code, elapsed_time):
-        if return_code != 0:
-            templ = "[Finished in {:.2f}s with exit code {}]\n"
-            self.append(templ.format(elapsed_time, return_code))
-            self.append("[cmd: {}]\n".format(command))
-            self.append("[dir: {}]\n".format(working_dir))
-        else:
-            self.append("[Finished in {:.2f}s]\n".format(elapsed_time))
-
-    @staticmethod
-    def find_panel(window, name):
-        panel = window.find_output_panel(name)
-
-        if panel == None:
-            return None
-        else:
-            panel = Panel(panel)
-            window.run_command("show_panel", { "panel" : "output.{}".format(name) })
-            return panel
-
-    @staticmethod
-    def request_panel(window, name):
-        panel = Panel.find_panel(window, name)
-
-        if panel == None:
-            panel = window.create_output_panel(name)
-            return Panel(panel)
-        else:
-            return panel
-
-    @staticmethod
-    def find_exec_panel(window):
-        return Panel.find_panel(window, "exec")
-
-    @staticmethod
-    def request_exec_panel(window = None):
-        if window == None:
-            window = sublime.active_window()
-
-        panel = Panel.find_panel(window, "exec")
-
-        if panel == None:
-            panel = window.create_output_panel("exec")
-            panel.settings().set('color_scheme', "Packages/User/IDLEIDLE.tmTheme")
-            panel = Panel(panel)
-
-        window.run_command("show_panel", { "panel" : "output.exec" })
-        return panel
 
 class Task:
     class Sentinel:
@@ -147,24 +86,22 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
     def run(self, config = None):
         MinionGenericBuildCommand.run_build(
             config,
-            self.filter,
-            MinionGenericBuildCommand.on_cancelled,
-            )
+            self.filter)
 
     @staticmethod
-    def filter(panel, lines, config):
+    def filter(panel, line, config, context):
         if "ignore_errors" in config:
-            if re.match(config["ignore_errors"], lines[-1]) == None:
-                panel.append('{}'.format(lines[-1]))
+            if re.match(config["ignore_errors"], line) == None:
+                panel.append('{}'.format(line))
         else:
-            panel.append('{}'.format(lines[-1]))
+            panel.append('{}'.format(line))
 
     @staticmethod
     def on_cancelled(panel, elapsed_time, config):
         panel.append('[Cancelled build.]\n')
 
     @staticmethod
-    def on_finished(panel, return_code, elapsed_time, config):
+    def on_finished(panel, return_code, elapsed_time, config, context):
         panel.append_finish_message(
             config['command'],
             config['working_dir'],
@@ -190,11 +127,11 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
                     try:
                         process = Task(config['command'], config['working_dir'])            
 
-                        lines = []
+                        context = {}
 
-                        panel = Panel.request_exec_panel()
-                        panel.clear()
-                        panel.append("[Building...]\n")
+                        output = OutputView.request()
+                        output.clear()
+                        output.append("[Building...]\n")
 
                         cancelled = False
 
@@ -205,19 +142,18 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
                                 break
 
                             if line != None:
-                                lines.append(line.decode('utf-8'))
-                                filter(panel, lines, config)
+                                filter(output, line.decode('utf-8'), config, context)
 
                         elapsed_time = time.time() - start
 
                         if cancelled:
-                            on_cancelled(panel, elapsed_time, config)
+                            on_cancelled(output, elapsed_time, config)
                         else:
-                            on_finished(panel, process.return_code(), elapsed_time, config)
-                    except Exception as exception:
-                        panel = Panel.request_exec_panel()
-                        panel.clear()
-                        panel.append("[Running task {} failed.]\n".format(config['command']))
+                            on_finished(output, process.return_code(), elapsed_time, config, context)
+                    except Exception:
+                        output = OutputView.request()
+                        output.clear()
+                        output.append("[Running task {} failed.]\n".format(config['command']))
                         traceback.print_exc()
 
         with klass.worker_mutex:
