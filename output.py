@@ -58,6 +58,7 @@ def collapse_group(group):
 
 class OutputView:
     content = ""
+    position = 0.0
     id = None
 
     def __init__(self, view):
@@ -161,9 +162,18 @@ class OutputView:
             active = window.active_view()
             output = window.new_file()
             output.settings().set("line_numbers", False)
+            output.settings().set("scroll_past_end", False)
+            output.settings().set("scroll_speed", 0.0)
+            output.settings().set("gutter", False)
             output.set_scratch(True)
             output.set_name("Output")
             output.run_command("output_view_append", { "text" : OutputView.content })
+
+            def update():
+                output.set_viewport_position((0, OutputView.position), False)
+
+            sublime.set_timeout(update, 0.0)
+
             OutputView.id = output.id()
             window.set_view_index(output, num_groups - 1, len(views))
             window.focus_view(active)
@@ -178,10 +188,13 @@ class OutputViewClearCommand(sublime_plugin.TextCommand):
 class OutputViewAppendCommand(sublime_plugin.TextCommand):
     def run(self, edit, text):
         scroll = self.view.visible_region().end() == self.view.size()
-        self.view.insert(edit, self.view.size(), text)
+        view = self.view
+        view.insert(edit, view.size(), text)
 
         if scroll:
-            self.view.show(self.view.size())
+            viewport = view.viewport_extent()
+            last_line = view.text_to_layout(view.size())
+            view.set_viewport_position((0, last_line[1] - viewport[1]), False)
 
 class OpenOutputCommand(sublime_plugin.WindowCommand):
     def run(self):
@@ -200,5 +213,4 @@ class OutputEventListener(sublime_plugin.EventListener):
 
     def on_close(self, view):
         if view.is_scratch() and view.name() == "Output":
-            window = sublime.active_window()
-            group, index = window.get_view_index(view)
+            OutputView.position = view.viewport_position()[1]
