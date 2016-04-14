@@ -93,7 +93,7 @@ class OutputView:
         window = sublime.active_window()
         views = window.views_in_group(group)
 
-        if (len(views) == 0 or len(views) == 1 and 
+        if (len(views) == 0 or len(views) == 1 and
             views[0].id() == self.view.id()):
             collapse_group(group)
 
@@ -126,7 +126,7 @@ class OutputView:
     def request():
         window = sublime.active_window()
         num_groups = window.num_groups()
-        
+
         if num_groups < 3:
             layout = window.get_layout()
             num_rows = len(layout["rows"]) - 1
@@ -147,7 +147,7 @@ class OutputView:
 
                 cells.append([num_cols - 1, new_num_rows - 1, num_cols, new_num_rows])
                 layout["cells"] = cells
-                
+
                 window.set_layout(layout)
 
         num_groups = window.num_groups()
@@ -179,7 +179,7 @@ class OutputView:
             window.focus_view(active)
 
         return OutputView(output)
-        
+
 
 class OutputViewClearCommand(sublime_plugin.TextCommand):
     def run(self, edit):

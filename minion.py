@@ -187,14 +187,14 @@ def get_working_dir():
         for build_system in build_systems:
             if "working_dir" in build_system:
                return sublime.expand_variables(build_system["working_dir"], window.extract_variables())
-    
+
     view = window.active_view()
     return os.path.dirname(view.file_name())
 
 class MinionMakeCommand(sublime_plugin.WindowCommand):
     def run(self):
         commands = [
-            ("Make - Make", ["make"]),
+            ("Make - Make", ["make", "-j4"]),
             ("Make - Clean", ["make", "clean"]),
             ("Make - Distclean", ["make", "distclean"])]
 
@@ -216,3 +216,9 @@ class MinionFixLineEndings(sublime_plugin.TextCommand):
             self.view.replace(edit, result, "\n")
             position = result.end()
             result = self.view.find("(\\ +)\\n", position)
+
+
+class MinionEventListener(sublime_plugin.EventListener):
+    def on_pre_save(self, view):
+        view.run_command("minion_fix_line_endings")
+        # view.run_command("expand_tabs", { "set_translate_tabs": True })
