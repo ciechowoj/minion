@@ -199,11 +199,12 @@ class MinionMakeCommand(sublime_plugin.WindowCommand):
             ("Make - Distclean", ["make", "distclean"])]
 
         def on_done(index):
-            config = {
-                "command" : commands[index][1],
-                "working_dir" : get_working_dir() }
+            if (index != -1):
+                config = {
+                    "command" : commands[index][1],
+                    "working_dir" : get_working_dir() }
 
-            self.window.run_command("minion_generic_build", { "config" : config })
+                self.window.run_command("minion_generic_build", { "config" : config })
 
         self.window.show_quick_panel([x[0] for x in commands], on_done)
 

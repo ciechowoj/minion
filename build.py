@@ -125,7 +125,7 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
                     start = time.time()
 
                     try:
-                        process = Task(config['command'], config['working_dir'])            
+                        process = Task(config['command'], config['working_dir'])
 
                         context = {}
 
