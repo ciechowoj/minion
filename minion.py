@@ -223,3 +223,11 @@ class MinionEventListener(sublime_plugin.EventListener):
     def on_pre_save(self, view):
         view.run_command("minion_fix_line_endings")
         # view.run_command("expand_tabs", { "set_translate_tabs": True })
+
+class MinionCommand(sublime_plugin.WindowCommand):
+    def run(self, **kwargs):
+        print("minion: ", kwargs)
+
+        self.window.run_command(
+            "minion_generic_build",
+            { "config" : kwargs })

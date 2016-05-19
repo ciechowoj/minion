@@ -103,7 +103,7 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
     @staticmethod
     def on_finished(panel, return_code, elapsed_time, config, context):
         panel.append_finish_message(
-            config['command'],
+            config['cmd'],
             config['working_dir'],
             return_code,
             elapsed_time)
@@ -125,7 +125,7 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
                     start = time.time()
 
                     try:
-                        process = Task(config['command'], config['working_dir'])
+                        process = Task(config['cmd'], config['working_dir'])
 
                         context = {}
 
@@ -153,7 +153,7 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
                     except Exception:
                         output = OutputView.request()
                         output.clear()
-                        output.append("[Running task {} failed.]\n".format(config['command']))
+                        output.append("[Running task {} failed.]\n".format(config['cmd']))
                         traceback.print_exc()
 
         with klass.worker_mutex:
