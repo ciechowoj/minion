@@ -6,18 +6,6 @@ import os
 import queue
 from User.output import *
 
-def expand_variables_ex(value, variables = None):
-    variables = variables if variables else sublime.active_window().extract_variables()
-
-    if isinstance(value, str) and value.startswith('${') and value.endswith('}'):
-        return sublime.expand_variables(value, variables)
-    elif isinstance(value, list):
-        return [expand_variables_ex(v, variables) for v in value]
-    elif isinstance(value, dict):
-        return { k : expand_variables_ex(v, variables) for k, v in value.items() }
-    else:
-        return value
-
 class Task:
     class Sentinel:
         pass
@@ -91,8 +79,16 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
     @staticmethod
     def filter(panel, line, config, context):
         if "ignore_errors" in config:
-            if re.match(config["ignore_errors"], line) == None:
-                panel.append('{}'.format(line))
+            ignored = config["ignore_errors"]
+
+            if not isinstance(ignored, list):
+                ignored = [ignored]
+
+            for item in ignored:
+                if item.strip() == line.strip() or re.match(item, line.strip()) != None:
+                    return
+
+            panel.append('{}'.format(line))
         else:
             panel.append('{}'.format(line))
 

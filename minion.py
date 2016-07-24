@@ -208,25 +208,9 @@ class MinionMakeCommand(sublime_plugin.WindowCommand):
 
         self.window.show_quick_panel([x[0] for x in commands], on_done)
 
-class MinionFixLineEndings(sublime_plugin.TextCommand):
-    def run(self, edit):
-        position = 0
-        result = self.view.find("(\\ +)\\n", position)
-
-        while result != None and not result.empty():
-            self.view.replace(edit, result, "\n")
-            position = result.end()
-            result = self.view.find("(\\ +)\\n", position)
-
-
-class MinionEventListener(sublime_plugin.EventListener):
-    def on_pre_save(self, view):
-        view.run_command("minion_fix_line_endings")
-        # view.run_command("expand_tabs", { "set_translate_tabs": True })
-
 class MinionCommand(sublime_plugin.WindowCommand):
     def run(self, **kwargs):
-        print("minion: ", kwargs)
+        # print("minion: ", kwargs)
 
         self.window.run_command(
             "minion_generic_build",

@@ -146,7 +146,7 @@ EXPERIMENTAL = """
 
 {
     "name": "experimental",
-    "mainSourceFile": "unittest.d",
+    "mainSourceFile": "experimental.d",
     "targetName": "experimental",
     "sourcePaths": ["dstep", "clang", "unit_tests"],
     "importPaths": ["dstep", "clang"],

@@ -98,15 +98,23 @@ class MinionBuildLatexCommand(sublime_plugin.WindowCommand):
 
         panel.append("[Finished]\n")
 
-    def run(self, draft = False):
-        latex_data = self.latex_data()
+    def run(self, draft = False, **kwargs):
 
-        if draft:
-            latex_data["command"] = ["pdflatex", "--draftmode", latex_data["main"]]
-        else:
-            latex_data["command"] = ["pdflatex", latex_data["main"]]
+        print(kwargs)
 
+        latex_data = kwargs
+
+        latex_data["cmd"] = ["pdflatex", "-output-directory", "build", latex_data["main"]]
+
+        bibtex_data = {}
+        bibtex_data["cmd"] = ["bibtex", "build/" + latex_data["main"].replace(".tex", ".aux")]
+        bibtex_data["working_dir"] = latex_data["working_dir"]
+
+        print("Here!", flush = True)
+        MinionGenericBuildCommand.run_build(bibtex_data)
         MinionGenericBuildCommand.run_build(latex_data, self.filter, self.on_finished)
+
+
 
 class MinionLatexListener(sublime_plugin.EventListener):
     def __init__(self, *args):
@@ -115,4 +123,4 @@ class MinionLatexListener(sublime_plugin.EventListener):
     def on_post_save(self, view):
         if view.file_name().endswith(".tex"):
             window = view.window()
-            window.run_command("minion_build_latex", { "draft" : False })
+            window.run_command("build")
