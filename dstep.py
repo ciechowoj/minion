@@ -152,7 +152,7 @@ EXPERIMENTAL = """
     "importPaths": ["dstep", "clang"],
     "lflags-posix": ["-lclang", "-rpath", ".", "-L.", "-L/usr/lib64/llvm", "-L/usr/lib/llvm-3.7/lib"],
     "lflags-windows": ["+\\\\", "+clang"],
-    "excludedSourceFiles": ["dstep/driver/*"]
+    "excludedSourceFiles": ["dstep/main.d"]
 }"""
 
 class ToggleExperimentalConfigCommand(sublime_plugin.WindowCommand):

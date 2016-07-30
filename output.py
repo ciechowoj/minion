@@ -123,6 +123,12 @@ class OutputView:
         return None
 
     @staticmethod
+    def create():
+        view = OutputView.request()
+        view.clear()
+        return view
+
+    @staticmethod
     def request():
         window = sublime.active_window()
         num_groups = window.num_groups()
