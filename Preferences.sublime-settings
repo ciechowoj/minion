@@ -1,0 +1,26 @@
+{
+	"added_words":
+	[
+		"irradiance",
+		"Nokia",
+		"Lumia",
+		"Huawei",
+		"epipole",
+		"vertices"
+	],
+	"auto_complete_commit_on_tab": true,
+	"color_scheme": "Packages/Color Scheme - Default/IDLE.tmTheme",
+	"default_line_ending": "LF",
+	"enable_hexadecimal_encoding": false,
+	"ensure_newline_at_eof_on_save": true,
+	"fallback_encoding": "UTF-8",
+	"font_size": 9,
+	"rulers":
+	[
+		80,
+		100
+	],
+	"show_encoding": true,
+	"spell_check": true,
+	"trim_trailing_white_space_on_save": true
+}
