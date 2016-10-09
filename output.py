@@ -171,6 +171,7 @@ class OutputView:
             output.settings().set("scroll_past_end", False)
             output.settings().set("scroll_speed", 0.0)
             output.settings().set("gutter", False)
+            output.settings().set("spell_check", False)
             output.set_scratch(True)
             output.set_name("Output")
             output.run_command("output_view_append", { "text" : OutputView.content })

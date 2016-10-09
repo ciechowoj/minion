@@ -4,6 +4,9 @@ import traceback
 import re, time, copy
 import os
 import queue
+import collections
+
+
 from User.output import *
 
 class Task:
@@ -94,7 +97,7 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
 
     @staticmethod
     def on_cancelled(panel, elapsed_time, config):
-        panel.append('[Cancelled build.]\n')
+        panel.append('[Canceled build.]\n')
 
     @staticmethod
     def on_finished(panel, return_code, elapsed_time, config, context):
@@ -106,6 +109,11 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
 
         window = sublime.active_window()
         window.run_command("minion_next_result", { "action" : "init", "build_system" : config })
+
+        MinionNextErrorCommand.set_list(
+            panel.substr(sublime.Region(0, panel.size())),
+            config["working_dir"]);
+
 
     @classmethod
     def run_build(klass, config, filter = None, on_finished = None, on_cancelled = None):
@@ -169,3 +177,133 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
 
 def plugin_unloaded():
     MinionGenericBuildCommand.cancel_build()
+
+ErrorListItem = collections.namedtuple('ErrorListItem', ['file', 'line', 'column', 'source', 'message'])
+
+class MinionNextErrorCommand(sublime_plugin.WindowCommand):
+    error_list = []
+    prev_error = -1
+    working_dir = ""
+
+    def __init__(self, window):
+        super().__init__(window)
+
+    def _highlight(self, region):
+        panel = OutputView.request()
+
+        if not isinstance(region, sublime.Region):
+            region = sublime.Region(region[0], region[1])
+
+        panel.add_regions(
+            "error", [region], "error",
+            flags = (sublime.DRAW_SQUIGGLY_UNDERLINE
+                | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE))
+
+        panel.show_at_center(region)
+
+    def run(self, **kwargs):
+        error_list = MinionNextErrorCommand.error_list
+        prev_error = MinionNextErrorCommand.prev_error
+
+        if len(error_list) == 0:
+            sublime.status_message("No errors...")
+            return
+
+        direction = -1 if "forward" in kwargs and not kwargs["forward"] else +1
+        current_error = (prev_error
+            + direction + len(error_list)) % len(error_list)
+        MinionNextErrorCommand.prev_error = current_error
+
+        error = error_list[current_error]
+
+        working_dir = os.path.realpath(MinionNextErrorCommand.working_dir)
+        basename = "{}:{}:{}".format(error.file, error.line, error.column)
+        path = os.path.realpath(os.path.join(working_dir, basename))
+
+        if path.startswith(working_dir):
+            self.window.open_file(path, sublime.ENCODED_POSITION)
+
+        self._highlight(error.source)
+
+
+    @staticmethod
+    def _make_default_error_list(buffer):
+        def split_error(line):
+            split = line.split(":")
+
+            if 2 < len(split) and split[1].isdigit():
+                if 3 < len(split) and split[2].isdigit():
+                    return (split[0], split[1], split[2], line[sum(map(len, split[0:3])) + 3:])
+                return (split[0], split[1], 0, line[sum(map(len, split[0:2])) + 2:])
+
+            return None
+
+        def tilde_and_dash(line):
+            line = line.strip()
+            return line.count("~") + line.count("^") == len(line)
+
+        result = []
+
+        lines = list(buffer.splitlines(True))
+        itr, size = 0, len(lines)
+        offset = 0
+
+        while itr < size:
+            split = split_error(lines[itr])
+
+            if split:
+                message = lines[itr]
+
+                if itr + 2 < size and tilde_and_dash(lines[itr + 2]):
+                    message = "".join(lines[itr:itr+3])
+                    itr += 3
+                else:
+                    itr += 1
+
+                result.append(
+                    ErrorListItem(
+                        split[0], split[1], split[2],
+                        (offset, offset + len(message)), message))
+
+                offset += len(message)
+            else:
+                offset += len(lines[itr])
+                itr += 1
+
+        return result
+
+
+    @classmethod
+    def make_error_list(klass, buffer, regex):
+        if regex == None:
+            return klass._make_default_error_list(buffer)
+        else:
+            return klass._make_regex_error_list(buffer)
+
+    @classmethod
+    def _set_list_list(klass, error_list):
+        klass.error_list = error_list
+        klass.prev_error = -1
+
+    @classmethod
+    def _set_list_str(klass, error_list, regex):
+        klass._set_list_list(klass.make_error_list(error_list, regex))
+
+    @classmethod
+    def set_list(klass, error_list, working_dir, regex = None):
+        if isinstance(error_list, list):
+            klass._set_list_list(error_list)
+        else:
+            klass._set_list_str(error_list, regex)
+
+        klass.working_dir = working_dir
+
+    @staticmethod
+    def reset_list():
+        klass.error_list = []
+        klass.prev_error = -1
+        klass.working_dir = ""
+
+
+
+

@@ -39,45 +39,6 @@ class MinionPanelAppendCommand(sublime_plugin.TextCommand):
         if scroll:
             self.view.show(self.view.size())
 
-class MinionNextResultCommand(sublime_plugin.WindowCommand):
-    def __init__(self, window):
-        super().__init__(window)
-        self.position = 0
-        self.build_system = None
-
-    def run(self, action = None, **kwargs):
-        if action == "init":
-            self.position = 0
-            self.build_system = kwargs["build_system"]
-        else:
-            try:
-                panel = OutputView.request()
-                file_regex = self.build_system["file_regex"]
-                region = panel.find(file_regex, self.position)
-
-                self.position = region.end()
-                message = panel.substr(region)
-
-                match = re.match(file_regex, message)
-                file = match.group(1)
-                line = match.group(2)
-                column = match.group(3)
-
-                working_dir = self.build_system["working_dir"]
-                basename = "{}:{}:{}".format(file, line, column)
-                path = os.path.join(working_dir, basename)
-
-                panel.add_regions("error", [region], "error", flags = sublime.DRAW_STIPPLED_UNDERLINE | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE)
-                panel.show_at_center(region)
-
-                self.window.open_file(path, sublime.ENCODED_POSITION)
-
-                sublime.status_message(message)
-
-            except (AttributeError, TypeError):
-                traceback.print_exc()
-                sublime.status_message("No more errors...")
-
 class MinionBuildCommand(sublime_plugin.WindowCommand):
     def __init__(self, *args):
         super().__init__(*args)
@@ -215,3 +176,7 @@ class MinionCommand(sublime_plugin.WindowCommand):
         self.window.run_command(
             "minion_generic_build",
             { "config" : kwargs })
+
+
+
+
