@@ -5,7 +5,7 @@ import re, time, copy
 import os
 import queue
 import collections
-
+import html
 
 from User.output import *
 
@@ -128,6 +128,8 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
                 if config != None:
                     start = time.time()
 
+                    MinionNextErrorCommand.reset_list()
+
                     try:
                         process = Task(config['cmd'], config['working_dir'])
 
@@ -184,6 +186,7 @@ class MinionNextErrorCommand(sublime_plugin.WindowCommand):
     error_list = []
     prev_error = -1
     working_dir = ""
+    phantom_sets = {}
 
     def __init__(self, window):
         super().__init__(window)
@@ -225,9 +228,84 @@ class MinionNextErrorCommand(sublime_plugin.WindowCommand):
 
         self._highlight(error.source)
 
+    @classmethod
+    def _show_phantoms(klass):
+        stylesheet = '''
+            <style>
+                div.error {
+                    padding: 0.4rem 0 0.4rem 0.7rem;
+                    margin: 0.2rem 0;
+                    border-radius: 2px;
+                }
 
-    @staticmethod
-    def _make_default_error_list(buffer):
+                div.error span.message {
+                    padding-right: 0.7rem;
+                }
+
+                div.error a {
+                    text-decoration: inherit;
+                    padding: 0.35rem 0.7rem 0.45rem 0.8rem;
+                    position: relative;
+                    bottom: 0.05rem;
+                    border-radius: 0 2px 2px 0;
+                    font-weight: bold;
+                }
+                html.dark div.error a {
+                    background-color: #00000018;
+                }
+                html.light div.error a {
+                    background-color: #ffffff18;
+                }
+            </style>
+        '''
+
+        error_list = klass.error_list
+        errors_by_file = {}
+
+        for error in error_list:
+            if error.file in errors_by_file:
+                errors_by_file[error.file].append(error)
+            else:
+                errors_by_file[error.file] = [error]
+
+        for file, errors in errors_by_file.items():
+            view = sublime.active_window().find_open_file(file)
+
+            if view:
+                buffer_id = view.buffer_id()
+
+                if buffer_id not in klass.phantom_sets:
+                    phantom_set = sublime.PhantomSet(view, "minion")
+                    klass.phantom_sets[buffer_id] = phantom_set
+                else:
+                    phantom_set = klass.phantom_sets[buffer_id]
+
+                phantoms = []
+
+                for _, line, column, _, text in errors:
+                    escaped = html.escape(text, quote=False).splitlines()[0].strip()
+
+                    pt = view.text_point(line - 1, max(0, column - 1 - len(escaped) // 2))
+                    phantoms.append(sublime.Phantom(
+                        sublime.Region(pt, view.line(pt).b),
+                        ('<body id=inline-error>' + stylesheet +
+                            '<div class="error">' +
+                            '<span class="message">' + escaped + '</span>' +
+                            '<a href=hide>' + chr(0x00D7) + '</a></div>' +
+                            '</body>'),
+                        sublime.LAYOUT_BELOW, on_navigate = klass.hide_phantoms))
+
+                phantom_set.update(phantoms)
+
+    @classmethod
+    def hide_phantoms(klass, url = None):
+        for view in sublime.active_window().views():
+            view.erase_phantoms("minion")
+
+        klass.phantom_sets = {}
+
+    @classmethod
+    def _make_default_error_list(klass, buffer):
         def split_error(line):
             split = line.split(":")
 
@@ -271,9 +349,14 @@ class MinionNextErrorCommand(sublime_plugin.WindowCommand):
                 else:
                     itr += 1
 
+                working_dir = os.path.realpath(klass.working_dir)
+                path = os.path.realpath(os.path.join(working_dir, split[0]))
+
                 result.append(
                     ErrorListItem(
-                        split[0], split[1], split[2],
+                        path,
+                        int(split[1]),
+                        int(split[2]),
                         (offset, offset + len(message)), message))
 
                 offset += len(message)
@@ -301,20 +384,23 @@ class MinionNextErrorCommand(sublime_plugin.WindowCommand):
         klass._set_list_list(klass.make_error_list(error_list, regex))
 
     @classmethod
-    def set_list(klass, error_list, working_dir, regex = None):
+    def set_list(klass, error_list, working_dir, regex = None, show_phantoms = True):
+        klass.working_dir = working_dir
+
         if isinstance(error_list, list):
             klass._set_list_list(error_list)
         else:
             klass._set_list_str(error_list, regex)
 
-        klass.working_dir = working_dir
+        if show_phantoms:
+            klass._show_phantoms()
 
-    @staticmethod
-    def reset_list():
+    @classmethod
+    def reset_list(klass):
         klass.error_list = []
         klass.prev_error = -1
         klass.working_dir = ""
-
+        klass.hide_phantoms()
 
 
 
