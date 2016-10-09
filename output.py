@@ -213,6 +213,8 @@ class CloseOutputCommand(sublime_plugin.WindowCommand):
 
 class OutputEventListener(sublime_plugin.EventListener):
     def on_query_context(self, view, key, operator, operand, match_all):
+        print("on_quert_context")
+
         if key == "output_visible":
             return OutputView.find_view() != None
         else:

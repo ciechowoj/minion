@@ -242,6 +242,13 @@ class MinionNextErrorCommand(sublime_plugin.WindowCommand):
             line = line.strip()
             return line.count("~") + line.count("^") == len(line)
 
+        def hint(underscore, tentative):
+            begin = len(underscore) - len(underscore.lstrip())
+            tentative_begin = len(tentative) - len(tentative.lstrip())
+
+            return (begin < tentative_begin
+                and len("".join(tentative.split())) < len(underscore) // 2)
+
         result = []
 
         lines = list(buffer.splitlines(True))
@@ -255,8 +262,12 @@ class MinionNextErrorCommand(sublime_plugin.WindowCommand):
                 message = lines[itr]
 
                 if itr + 2 < size and tilde_and_dash(lines[itr + 2]):
-                    message = "".join(lines[itr:itr+3])
-                    itr += 3
+                    if itr + 3 < size and hint(lines[itr + 2], lines[itr + 3]):
+                        message = "".join(lines[itr:itr + 4])
+                        itr += 4
+                    else:
+                        message = "".join(lines[itr:itr + 3])
+                        itr += 3
                 else:
                     itr += 1
 

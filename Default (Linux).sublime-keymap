@@ -18,13 +18,18 @@
 	{ "keys": ["f9"], "command": "toggle_setting", "args": {"setting": "word_wrap"} },
 
 
-	{ "keys": ["escape"], "command": "single_selection", "context":
+	{ "keys": ["ctrl+escape"], "command": "open_output" },
+
+	{ "keys": ["escape"], "command": "close_output", "context":
 		[
-			{ "key": "num_selections", "operator": "not_equal", "operand": 1 }
+			{ "key": "output_visible", "operator": "equal", "operand": true },
+			{ "key": "panel_visible", "operator": "equal", "operand": false },
+			{ "key": "overlay_visible", "operator": "equal", "operand": false },
+			{ "key": "popup_visible", "operator": "equal", "operand": false },
+			{ "key": "auto_complete_visible", "operator": "equal", "operand": false },
 		]
 	},
 
-	{ "keys": ["ctrl+escape"], "command": "open_output" },
 	{ "keys": ["shift+escape"], "command": "show_panel", "args" : { "panel" : "output.errors" } },
 
 	{ "keys": ["ctrl+,"], "command": "focus_neighboring_group", "args": {"forward": false} },
