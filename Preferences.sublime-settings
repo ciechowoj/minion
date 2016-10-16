@@ -6,7 +6,8 @@
 		"Lumia",
 		"Huawei",
 		"epipole",
-		"vertices"
+		"vertices",
+		"indices"
 	],
 	"auto_complete_commit_on_tab": true,
 	"color_scheme": "Packages/Color Scheme - Default/IDLE.tmTheme",

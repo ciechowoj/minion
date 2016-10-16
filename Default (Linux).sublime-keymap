@@ -39,4 +39,7 @@
 	{ "keys": ["alt+f10"], "command": "toggle_menu" },
 	{ "keys": ["alt+f11"], "command": "unexpand_tabs", "args" : {"set_translate_tabs": true} },
 	{ "keys": ["alt+f12"], "command": "expand_tabs", "args" : {"set_translate_tabs": true} },
+
+	{ "keys": ["ctrl+k", "ctrl+f"], "command": "minion_format" },
+
 ]

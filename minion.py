@@ -70,6 +70,8 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
 
         config["command"] = config["cmd"]
 
+        print("Hello world!")
+
         self.window.run_command(
             "minion_generic_build",
             { "config" : config })
@@ -152,30 +154,54 @@ def get_working_dir():
     view = window.active_view()
     return os.path.dirname(view.file_name())
 
-class MinionMakeCommand(sublime_plugin.WindowCommand):
-    def run(self):
-        commands = [
-            ("Make - Make", ["make", "-j4"]),
-            ("Make - Clean", ["make", "clean"]),
-            ("Make - Distclean", ["make", "distclean"])]
-
-        def on_done(index):
-            if (index != -1):
-                config = {
-                    "command" : commands[index][1],
-                    "working_dir" : get_working_dir() }
-
-                self.window.run_command("minion_generic_build", { "config" : config })
-
-        self.window.show_quick_panel([x[0] for x in commands], on_done)
-
 class MinionCommand(sublime_plugin.WindowCommand):
+    def __init__(self, window):
+        super().__init__(window)
+
+    def _active_view_dir(self):
+        view = self.window.active_view()
+        return os.path.dirname(view.file_name())
+
+    def _makefile_exists(self):
+        pass
+
     def run(self, **kwargs):
-        # print("minion: ", kwargs)
+        if "working_dir" not in kwargs or kwargs["working_dir"] == "":
+            kwargs["working_dir"] = self._active_view_dir()
 
         self.window.run_command(
             "minion_generic_build",
             { "config" : kwargs })
+
+
+
+
+
+class MinionFormatCommand(sublime_plugin.WindowCommand):
+    def __init__(self, window):
+        super().__init__(window)
+
+    def _get_syntax(self):
+        view = self.window.active_view()
+        syntax = view.settings().get('syntax')
+        return os.path.splitext(os.path.basename(syntax))[0]
+
+    def _active_file(self):
+        view = self.window.active_view()
+        return view.file_name()
+
+    def run(self, **kwargs):
+        syntax = self._get_syntax()
+
+        if syntax == "C++":
+            subprocess.call(["clang-format-4.0", "-i", "-style=Google", self._active_file()])
+            self.window.active_view().set_status("minion-format", "clang-format-4.0: DONE...")
+
+            def erase_status():
+                self.window.active_view().erase_status("minion-format")
+
+            sublime.set_timeout(erase_status, 4096)
+
 
 
 

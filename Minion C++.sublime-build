@@ -9,7 +9,7 @@
 	[
 		{
 			"name": "Run",
-			"shell_cmd": "g++ \"${file}\" -o \"${file_path}/${file_base_name}\" && \"${file_path}/${file_base_name}\""
+			"cmd": ["make", "run"],
 		}
 	]
 }
