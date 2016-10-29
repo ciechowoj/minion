@@ -194,6 +194,7 @@ class MinionFormatCommand(sublime_plugin.WindowCommand):
         syntax = self._get_syntax()
 
         if syntax == "C++":
+            self.window.run_command("save")
             subprocess.call(["clang-format-4.0", "-i", "-style=Google", self._active_file()])
             self.window.active_view().set_status("minion-format", "clang-format-4.0: DONE...")
 

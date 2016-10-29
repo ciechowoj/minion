@@ -307,7 +307,10 @@ class MinionNextErrorCommand(sublime_plugin.WindowCommand):
     @classmethod
     def _make_default_error_list(klass, buffer):
         def split_error(line):
-            if line.startswith("In file included from"):
+            if line.startswith("In file included from "):
+                return None
+
+            if line.startswith("                 from "):
                 return None
 
             split = line.split(":")
