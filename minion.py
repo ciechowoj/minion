@@ -195,8 +195,8 @@ class MinionFormatCommand(sublime_plugin.WindowCommand):
 
         if syntax == "C++":
             self.window.run_command("save")
-            subprocess.call(["clang-format-4.0", "-i", "-style=Google", self._active_file()])
-            self.window.active_view().set_status("minion-format", "clang-format-4.0: DONE...")
+            subprocess.call(["clang-format-3.8", "-i", "-style=Google", self._active_file()])
+            self.window.active_view().set_status("minion-format", "clang-format-3.8: DONE...")
 
             def erase_status():
                 self.window.active_view().erase_status("minion-format")

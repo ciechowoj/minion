@@ -112,7 +112,8 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
 
         MinionNextErrorCommand.set_list(
             panel.substr(sublime.Region(0, panel.size())),
-            config["working_dir"]);
+            config["working_dir"],
+            config["file_regex"]);
 
 
     @classmethod
@@ -372,13 +373,34 @@ class MinionNextErrorCommand(sublime_plugin.WindowCommand):
 
         return result
 
+    @classmethod
+    def _make_regex_error_list(klass, buffer, regex):
+        result = []
+        compiled = re.compile(regex)
+        offset = 0
+
+        for line in buffer.splitlines(True):
+            match = compiled.match(line)
+
+            if match:
+                match = match.groups()
+                result.append(ErrorListItem(
+                    match[0] if len(match) > 0 else "",
+                    int(match[1]) if len(match) > 1 and match[1] else 0,
+                    int(match[2]) if len(match) > 2 and match[2] else 0,
+                    (offset, offset + len(line)),
+                    match[3] if len(match) > 3 else line.strip()))
+
+            offset += len(line)
+
+        return result
 
     @classmethod
     def make_error_list(klass, buffer, regex):
         if regex == None:
             return klass._make_default_error_list(buffer)
         else:
-            return klass._make_regex_error_list(buffer)
+            return klass._make_regex_error_list(buffer, regex)
 
     @classmethod
     def _set_list_list(klass, error_list):
