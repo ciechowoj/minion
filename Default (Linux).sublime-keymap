@@ -41,5 +41,6 @@
 	{ "keys": ["alt+f12"], "command": "expand_tabs", "args" : {"set_translate_tabs": true} },
 
 	{ "keys": ["ctrl+k", "ctrl+f"], "command": "minion_format" },
+	{ "keys": ["ctrl+k", "ctrl+o"], "command": "minion_toggle_header" },
 
 ]

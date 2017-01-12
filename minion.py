@@ -1,6 +1,7 @@
 import sublime, sublime_plugin
 import subprocess
 import re, os, os.path
+import itertools
 from User.build import *
 from User.output import *
 import traceback
@@ -205,6 +206,10 @@ class MinionFormatCommand(sublime_plugin.WindowCommand):
 
 
 class MinionDetectCpp(sublime_plugin.EventListener):
+    @staticmethod
+    def is_cpp(view):
+        pass
+
     def detect_cpp(self, view):
         if (os.path.splitext(view.file_name())[1] == "" and
             view.settings().get('syntax') == "Packages/Text/Plain text.tmLanguage" and
@@ -217,10 +222,76 @@ class MinionDetectCpp(sublime_plugin.EventListener):
     def on_post_save(self, view):
         self.detect_cpp(view)
 
+def walk_project_files(path):
+    IGNORE = ".git"
 
+    stack = [path]
+    full_path = [path]
 
+    while stack != []:
+        top = stack[-1]
+        stack.pop()
 
+        for file in os.listdir(top):
+            full = os.path.join(top, file)
+            if os.path.isdir(full):
+                if (not file.startswith(".") and
+                    file not in IGNORE):
+                    stack.append(full)
+            else:
+                yield full
 
+class MinionToggleHeader(sublime_plugin.WindowCommand):
+    def is_source(self, path):
+        if not path:
+            return False
 
+        return path.endswith(".cpp")
 
+    def is_header(self, path):
+        if not path:
+            return False
 
+        ext = os.path.splitext(path)[1]
+
+        if (ext == ""):
+            file = open(path, "r")
+
+            for line in itertools.islice(file.readlines(), 32):
+                if "#pragma" in line:
+                    return True
+
+            return False
+        else:
+            return ext == ".hpp"
+
+    def find_the_other(self, path, predicate):
+        project_path = self.window.extract_variables()["project_path"]
+
+        source_base = os.path.splitext(os.path.basename(path))[0]
+
+        for entry in walk_project_files(project_path):
+            if predicate(entry):
+                header_base = os.path.splitext(os.path.basename(entry))[0]
+
+                if header_base == source_base:
+                    return entry
+
+        return None
+
+    def toggle(self, view):
+        target = None
+
+        if self.is_header(view.file_name()):
+            target = self.find_the_other(view.file_name(), self.is_source)
+        elif self.is_source(view.file_name()):
+            target = self.find_the_other(view.file_name(), self.is_header)
+
+        if target:
+            self.window.open_file(target)
+            self.window.status_message("Toggle to {}...".format(os.path.basename(target)))
+        else:
+            self.window.status_message("Cannot toggle...")
+
+    def run(self, **kwargs):
+        self.toggle(self.window.active_view())
