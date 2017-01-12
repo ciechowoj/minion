@@ -4,7 +4,8 @@
 	{ "keys": ["alt+down"], "command": "swap_line_down" },
 
 	{ "keys": ["f5"], "command": "build" },
-	{ "keys": ["ctrl+f5"], "command": "build", "args": {"select": true} },
+	{ "keys": ["shift+f5"], "command": "build", "args": {"select": true} },
+	{ "keys": ["ctrl+f5"], "command": "minion_build_current_file" },
 	{ "keys": ["f6"], "command": "minion_cancell_build" },
 	{ "keys": ["f4"], "command": "minion_next_error", "args" : { "forward" : true } },
 	{ "keys": ["shift+f4"], "command": "minion_next_error", "args" : { "forward" : false } },

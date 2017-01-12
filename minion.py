@@ -174,10 +174,6 @@ class MinionCommand(sublime_plugin.WindowCommand):
             "minion_generic_build",
             { "config" : kwargs })
 
-
-
-
-
 class MinionFormatCommand(sublime_plugin.WindowCommand):
     def __init__(self, window):
         super().__init__(window)
@@ -241,32 +237,33 @@ def walk_project_files(path):
             else:
                 yield full
 
+def is_source(path):
+    if not path:
+        return False
+
+    return path.endswith(".cpp")
+
+def is_header(path):
+    if not path:
+        return False
+
+    ext = os.path.splitext(path)[1]
+
+    if (ext == ""):
+        file = open(path, "r")
+
+        for line in itertools.islice(file.readlines(), 32):
+            if "#pragma" in line:
+                return True
+
+        return False
+    else:
+        return ext == ".hpp"
+
 class MinionToggleHeader(sublime_plugin.WindowCommand):
-    def is_source(self, path):
-        if not path:
-            return False
-
-        return path.endswith(".cpp")
-
-    def is_header(self, path):
-        if not path:
-            return False
-
-        ext = os.path.splitext(path)[1]
-
-        if (ext == ""):
-            file = open(path, "r")
-
-            for line in itertools.islice(file.readlines(), 32):
-                if "#pragma" in line:
-                    return True
-
-            return False
-        else:
-            return ext == ".hpp"
-
-    def find_the_other(self, path, predicate):
-        project_path = self.window.extract_variables()["project_path"]
+    @staticmethod
+    def find_the_other(window, path, predicate):
+        project_path = window.extract_variables()["project_path"]
 
         source_base = os.path.splitext(os.path.basename(path))[0]
 
@@ -282,10 +279,10 @@ class MinionToggleHeader(sublime_plugin.WindowCommand):
     def toggle(self, view):
         target = None
 
-        if self.is_header(view.file_name()):
-            target = self.find_the_other(view.file_name(), self.is_source)
-        elif self.is_source(view.file_name()):
-            target = self.find_the_other(view.file_name(), self.is_header)
+        if is_header(view.file_name()):
+            target = MinionToggleHeader.find_the_other(self.window, view.file_name(), is_source)
+        elif is_source(view.file_name()):
+            target = MinionToggleHeader.find_the_other(self.window, view.file_name(), is_header)
 
         if target:
             self.window.open_file(target)
@@ -295,3 +292,31 @@ class MinionToggleHeader(sublime_plugin.WindowCommand):
 
     def run(self, **kwargs):
         self.toggle(self.window.active_view())
+
+class MinionBuildCurrentFile(sublime_plugin.WindowCommand):
+    def make(self, view):
+        target = view.file_name()
+
+        if is_header(target):
+            target = MinionToggleHeader.find_the_other(self.window, target, is_source)
+
+        if is_source(target):
+            object_file = os.path.splitext(target)[0] + ".o"
+
+            config = {
+                "working_dir" : self.window.extract_variables()["project_path"],
+                "cmd" : ["make", object_file] }
+
+            self.window.run_command("minion_generic_build", { "config" : config })
+
+            self.window.status_message("Building {}...".format(os.path.basename(target)))
+
+    def run(self, **kwargs):
+        self.make(self.window.active_view())
+
+
+
+
+
+
+
