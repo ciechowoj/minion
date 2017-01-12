@@ -204,6 +204,23 @@ class MinionFormatCommand(sublime_plugin.WindowCommand):
             sublime.set_timeout(erase_status, 4096)
 
 
+class MinionDetectCpp(sublime_plugin.EventListener):
+    def detect_cpp(self, view):
+        if (os.path.splitext(view.file_name())[1] == "" and
+            view.settings().get('syntax') == "Packages/Text/Plain text.tmLanguage" and
+            not view.find("#pragma|#include", 0).empty()):
+            view.set_syntax_file("Packages/C++/C++.tmLanguage")
+
+    def on_load(self, view):
+        self.detect_cpp(view)
+
+    def on_post_save(self, view):
+        self.detect_cpp(view)
+
+
+
+
+
 
 
 

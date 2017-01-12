@@ -113,7 +113,7 @@ class MinionGenericBuildCommand(sublime_plugin.WindowCommand):
         MinionNextErrorCommand.set_list(
             panel.substr(sublime.Region(0, panel.size())),
             config["working_dir"],
-            config["file_regex"]);
+            config["file_regex"] if "file_regex" in config else None);
 
 
     @classmethod
