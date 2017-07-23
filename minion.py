@@ -301,10 +301,14 @@ class MinionBuildCurrentFile(sublime_plugin.WindowCommand):
             target = MinionToggleHeader.find_the_other(self.window, target, is_source)
 
         if is_source(target):
-            object_file = os.path.splitext(target)[0] + ".o"
+            working_dir = self.window.extract_variables()["project_path"]
+
+            dirname, basename = os.path.split(os.path.splitext(target)[0])
+            object_file = os.path.join(dirname, "build", basename) + ".o"
+            object_file = os.path.relpath(object_file, working_dir)
 
             config = {
-                "working_dir" : self.window.extract_variables()["project_path"],
+                "working_dir" : working_dir,
                 "cmd" : ["make", object_file] }
 
             self.window.run_command("minion_generic_build", { "config" : config })
@@ -312,6 +316,9 @@ class MinionBuildCurrentFile(sublime_plugin.WindowCommand):
             self.window.status_message("Building {}...".format(os.path.basename(target)))
 
     def run(self, **kwargs):
+        if self.window.active_view().is_dirty():
+            self.window.run_command("save")
+
         self.make(self.window.active_view())
 
 

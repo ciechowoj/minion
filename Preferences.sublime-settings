@@ -7,15 +7,24 @@
 		"Huawei",
 		"epipole",
 		"vertices",
-		"indices"
+		"indices",
+		"implementational",
+		"Wann",
+		"responsivity",
+		"emissive",
+		"Qin"
 	],
 	"auto_complete_commit_on_tab": true,
-	"color_scheme": "Packages/Color Scheme - Default/IDLE.tmTheme",
+	"color_scheme": "Packages/Color Scheme - Default/Sixteen.tmTheme",
 	"default_line_ending": "LF",
 	"enable_hexadecimal_encoding": false,
 	"ensure_newline_at_eof_on_save": true,
 	"fallback_encoding": "UTF-8",
-	"font_size": 9,
+	"font_size": 10,
+	"ignored_packages":
+	[
+		"Vintage"
+	],
 	"rulers":
 	[
 		80,
@@ -24,5 +33,6 @@
 	"show_encoding": true,
 	"spell_check": true,
 	"tab_size": 2,
+	"theme": "Default.sublime-theme",
 	"trim_trailing_white_space_on_save": true
 }
