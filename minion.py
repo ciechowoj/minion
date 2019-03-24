@@ -71,8 +71,6 @@ class MinionBuildCommand(sublime_plugin.WindowCommand):
 
         config["command"] = config["cmd"]
 
-        print("Hello world!")
-
         self.window.run_command(
             "minion_generic_build",
             { "config" : config })
@@ -241,7 +239,7 @@ def is_source(path):
     if not path:
         return False
 
-    return path.endswith(".cpp")
+    return path.endswith(".cpp") or path.endswith(".c") or path.endswith(".cxx")
 
 def is_header(path):
     if not path:
@@ -252,18 +250,26 @@ def is_header(path):
     if (ext == ""):
         file = open(path, "r")
 
-        for line in itertools.islice(file.readlines(), 32):
-            if "#pragma" in line:
-                return True
+        try:
+            for line in itertools.islice(file.readlines(), 32):
+                if "#pragma" in line:
+                    return True
+        except:
+            return False
 
         return False
     else:
-        return ext == ".hpp"
+        return ext == ".hpp" or ext == ".h" or ext == ".hxx"
 
 class MinionToggleHeader(sublime_plugin.WindowCommand):
     @staticmethod
     def find_the_other(window, path, predicate):
-        project_path = window.extract_variables()["project_path"]
+        variables = window.extract_variables()
+
+        if "project_path" in variables:
+            project_path = variables["project_path"]
+        elif "folder" in variables:
+            project_path = variables["folder"]
 
         source_base = os.path.splitext(os.path.basename(path))[0]
 

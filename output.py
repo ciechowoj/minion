@@ -207,12 +207,13 @@ class OpenOutputCommand(sublime_plugin.WindowCommand):
     def run(self):
         OutputView.request()
 
-class CloseOutputCommand(sublime_plugin.WindowCommand):
+class CloseOutputCommand(sublime_plugin.ApplicationCommand):
     def run(self):
         OutputView.close()
 
 class OutputEventListener(sublime_plugin.EventListener):
     def on_query_context(self, view, key, operator, operand, match_all):
+        print(key)
         if key == "output_visible":
             return OutputView.find_view() != None
         else:

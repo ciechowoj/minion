@@ -104,7 +104,7 @@ class MinionBuildLatexCommand(sublime_plugin.WindowCommand):
 
         latex_data = kwargs
 
-        latex_data["cmd"] = ["pdflatex", "-output-directory", "build", latex_data["main"]]
+        latex_data["cmd"] = ["pdflatex", "-shell-escape", "-output-directory", "build", latex_data["main"]]
 
         bibtex_data = {}
         bibtex_data["cmd"] = ["bibtex", "build/" + latex_data["main"].replace(".tex", ".aux")]

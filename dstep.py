@@ -156,7 +156,6 @@ EXPERIMENTAL = """
         "(! [ -s linker_flags.txt ] && ./configure) || true"
     ],
 
-    "dflags-windows-x86": ["-m32mscoff"],
     "lflags-windows-x86": ["/LIBPATH:C:\\\\PROGRA~2\\\\LLVM\\\\lib", "libclang.lib", "Ole32.lib"],
     "lflags-windows-x86_64": ["/LIBPATH:C:\\\\PROGRA~1\\\\LLVM\\\\lib", "libclang.lib", "Ole32.lib"],
     "lflags-posix": ["@linker_flags.txt"]

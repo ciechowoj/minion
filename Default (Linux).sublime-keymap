@@ -15,10 +15,13 @@
 
 	{ "keys": ["ctrl+shift+f5"], "command": "build", "args": {"variant": "Rebuild"} },
 
+	{ "keys": ["f1"], "command": "goto_definition" },
 	{ "keys": ["f8"], "command": "minion_fix_line_endings"},
 	{ "keys": ["f9"], "command": "toggle_setting", "args": {"setting": "word_wrap"} },
 
+	{ "keys": ["f12"], "command": "close_output" },
 
+	{ "keys": ["ctrl+space"], "command": "auto_complete" },
 	{ "keys": ["ctrl+escape"], "command": "open_output" },
 
 	{ "keys": ["escape"], "command": "close_output", "context":

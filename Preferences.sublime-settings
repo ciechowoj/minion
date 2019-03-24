@@ -15,12 +15,12 @@
 		"Qin"
 	],
 	"auto_complete_commit_on_tab": true,
-	"color_scheme": "Packages/Color Scheme - Default/Sixteen.tmTheme",
+	"color_scheme": "Packages/Color Scheme - Default/Breakers.tmTheme",
 	"default_line_ending": "LF",
 	"enable_hexadecimal_encoding": false,
 	"ensure_newline_at_eof_on_save": true,
 	"fallback_encoding": "UTF-8",
-	"font_size": 10,
+	"font_size": 8,
 	"ignored_packages":
 	[
 		"Vintage"
@@ -34,5 +34,8 @@
 	"spell_check": true,
 	"tab_size": 2,
 	"theme": "Default.sublime-theme",
-	"trim_trailing_white_space_on_save": true
+	"translate_tabs_to_spaces": true,
+	"trim_trailing_white_space_on_save": true,
+	"auto_complete_triggers": [ {"selector": "text.html", "characters": "<"}, {"selector": "source.c++", "characters": ".:>" } ],
+	"auto_complete_delay": 333
 }

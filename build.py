@@ -221,11 +221,13 @@ class MinionNextErrorCommand(sublime_plugin.WindowCommand):
         error = error_list[current_error]
 
         working_dir = os.path.realpath(MinionNextErrorCommand.working_dir)
-        basename = "{}:{}:{}".format(error.file, error.line, error.column)
-        path = os.path.realpath(os.path.join(working_dir, basename))
+        if not os.path.isabs(error.file):
+            error_file = os.path.realpath(os.path.join(working_dir, error.file))
+        else:
+            error_file = error.file
 
-        if path.startswith(working_dir):
-            self.window.open_file(path, sublime.ENCODED_POSITION)
+        file_path = "{}:{}:{}".format(error_file, error.line, error.column)
+        self.window.open_file(file_path, sublime.ENCODED_POSITION)
 
         self._highlight(error.source)
 
